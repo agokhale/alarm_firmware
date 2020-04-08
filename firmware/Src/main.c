@@ -100,6 +100,14 @@ int main(void)
 
   /* Infinite loop */
   /* USER CODE BEGIN WHILE */
+
+  //init();
+  ssd1306_Init();
+  ssd1306_SetCursor(2, 0);
+  HAL_Delay(1000);
+  ssd1306_WriteString("Hello", Font_6x8, White);
+  ssd1306_UpdateScreen();
+
   while (1)
   {
     /* USER CODE END WHILE */
@@ -107,6 +115,51 @@ int main(void)
     /* USER CODE BEGIN 3 */
 
     input = get_key(); // read pushbuttons
+
+
+    switch(input) {
+    case KEY_SELECT:
+    {
+        // Cycle LED colors
+        static int led_mode = 0;
+        switch(led_mode) {
+        case 0:
+            GPIOB -> ODR &= ~LED_B_Pin;
+            GPIOB -> ODR |= LED_R_Pin;
+            break;
+        case 1:
+            GPIOB -> ODR &= ~LED_R_Pin;
+            GPIOB -> ODR |= LED_G_Pin;
+            break;
+        case 2:
+            GPIOB -> ODR &= ~LED_G_Pin;
+            GPIOB -> ODR |= LED_B_Pin;
+            break;
+        case 3:
+            GPIOB -> ODR |= LED_R_Pin;
+            GPIOB -> ODR |= LED_G_Pin;
+            GPIOB -> ODR |= LED_B_Pin;
+            break;
+        case 4:
+            GPIOB -> ODR &= ~LED_R_Pin;
+            GPIOB -> ODR &= ~LED_G_Pin;
+            GPIOB -> ODR &= ~LED_B_Pin;
+            break;
+        }
+        led_mode = (led_mode + 1) % 5;
+    }
+        break;
+    case KEY_CAL:
+    {
+        // Buzzzzz
+        for(unsigned long i = 0; i < 120; i++) {
+            GPIOA -> ODR ^= PIEZO_Pin;
+            HAL_Delay(1);
+        }
+        GPIOA -> ODR &= ~PIEZO_Pin;
+    }
+        break;
+    }
 
   }
   /* USER CODE END 3 */
