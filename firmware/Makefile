@@ -62,6 +62,9 @@ Drivers/STM32F0xx_HAL_Driver/Src/stm32f0xx_hal_tim_ex.c \
 Drivers/STM32F0xx_HAL_Driver/Src/stm32f0xx_hal_uart.c \
 Drivers/STM32F0xx_HAL_Driver/Src/stm32f0xx_hal_uart_ex.c \
 Src/system_stm32f0xx.c \
+Src/ssd1306/ssd1306.c \
+Src/ssd1306/ssd1306_fonts.c \
+Src/ssd1306/ssd1306_tests.c \
 Src/button.c
 
 # ASM sources
@@ -124,7 +127,7 @@ C_INCLUDES =  \
 -IDrivers/STM32F0xx_HAL_Driver/Inc/Legacy \
 -IDrivers/CMSIS/Device/ST/STM32F0xx/Include \
 -IDrivers/CMSIS/Include \
--IDrivers/CMSIS/Include
+-ISrc/ssd1306
 
 
 # compile gcc flags
@@ -150,7 +153,7 @@ LDSCRIPT = STM32F030C8Tx_FLASH.ld
 # libraries
 LIBS = -lc -lm -lnosys 
 LIBDIR = 
-LDFLAGS = $(MCU) -specs=nano.specs -T$(LDSCRIPT) $(LIBDIR) $(LIBS) -Wl,-Map=$(BUILD_DIR)/$(TARGET).map,--cref -Wl,--gc-sections
+LDFLAGS = $(MCU) -specs=nano.specs -T$(LDSCRIPT) $(LIBDIR) $(LIBS) -Wl,-Map=$(BUILD_DIR)/$(TARGET).map,--cref -Wl,--gc-sections -u _printf_float
 
 # default action: build all
 all: $(BUILD_DIR)/$(TARGET).elf $(BUILD_DIR)/$(TARGET).hex $(BUILD_DIR)/$(TARGET).bin
@@ -191,6 +194,25 @@ $(BUILD_DIR):
 clean:
 	-rm -fR $(BUILD_DIR)
   
+#######################################
+# flash and erase
+#######################################
+flash: all
+	st-flash --reset write build/$(TARGET).bin 0x8000000
+erase:
+	st-flash --reset erase
+
+# Flash with Black Magic probe
+flash-bm: all
+	gdb-multiarch -nx --batch \
+  -ex 'target extended-remote /dev/ttyACM0' \
+  -ex 'monitor swdp_scan' \
+  -ex 'attach 1' \
+  -ex 'load' \
+  -ex 'compare-sections' \
+  -ex 'kill' \
+  $(BUILD_DIR)/$(TARGET).elf
+
 #######################################
 # dependencies
 #######################################

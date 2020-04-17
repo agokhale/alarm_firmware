@@ -27,7 +27,11 @@
 /* Private includes ----------------------------------------------------------*/
 /* USER CODE BEGIN Includes */
 
+#include <math.h>
+#include <stdio.h>
+
 #include "button.h"
+#include "ssd1306.h"
 
 /* USER CODE END Includes */
 
@@ -104,8 +108,8 @@ int main(void)
   //init();
   ssd1306_Init();
   ssd1306_SetCursor(2, 0);
-  HAL_Delay(1000);
-  ssd1306_WriteString("Hello", Font_6x8, White);
+//  HAL_Delay(1000);
+  ssd1306_WriteString("Hello", Font_11x18, White);
   ssd1306_UpdateScreen();
 
   while (1)
@@ -161,6 +165,37 @@ int main(void)
         break;
     }
 
+    char Rx_data[100];
+    const int received = HAL_UART_Receive (&huart1, &Rx_data, sizeof(Rx_data), 0);
+
+    // Update display
+    ssd1306_Fill(Black);
+
+    const float temperature = 25;
+    const float pressure = 1000;
+    static float phase = 0;
+    const float vfb = sin(phase);
+    phase += .01;
+
+    char buf[20];
+
+    snprintf(buf, sizeof(buf), "Vfb:%1.3f", vfb);
+    ssd1306_SetCursor(2, 0);
+    ssd1306_WriteString(buf, Font_11x18, White);
+
+    snprintf(buf, sizeof(buf), "T:%1.3fC", temperature);
+    ssd1306_SetCursor(2, 20);
+    ssd1306_WriteString(buf, Font_11x18, White);
+
+    snprintf(buf, sizeof(buf), "P:%1.3fmbar", pressure);
+    ssd1306_SetCursor(2, 40);
+    ssd1306_WriteString(buf, Font_11x18, White);
+
+//    snprintf(buf, sizeof(buf), "Rx:%i", received);
+//    ssd1306_SetCursor(2, 22);
+//    ssd1306_WriteString(buf, Font_11x18, White);
+
+    ssd1306_UpdateScreen();
   }
   /* USER CODE END 3 */
 }
