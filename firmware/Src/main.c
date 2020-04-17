@@ -32,6 +32,7 @@
 
 #include "button.h"
 #include "ssd1306.h"
+#include "crc16_modbus.h"
 
 /* USER CODE END Includes */
 
@@ -63,6 +64,102 @@ void SystemClock_Config(void);
 
 /* Private user code ---------------------------------------------------------*/
 /* USER CODE BEGIN 0 */
+
+#ifdef _MSC_VER
+    #pragma pack(push)
+    #pragma pack(1)
+    #define PACKED
+#elif __GNUC__
+    #define PACKED __attribute__((__packed__))
+#else
+    #error packed structs not implemented
+#endif
+typedef struct {
+    uint16_t SOF; // 0x5555
+    uint8_t version; // 0
+    uint8_t type; // Packet type: 0
+    uint16_t vfb; // ADC value
+    uint32_t pressure;
+    uint32_t temperature;
+    uint16_t crc; // TODO
+} PACKED message_packet_t;
+#ifdef _MSC_VER
+    #pragma pack(pop)
+#endif
+
+float temperature = 0;
+float pressure = 0;
+float vfb = 0;
+
+void handle_byte(char data) {
+    static char buf[30];  // must be >= sizeof(message_packet_t)
+    static int pos = 0;
+
+    switch(pos) {
+        case 0: // SOF 1
+            if(data == 0x55)
+                buf[pos++] = data;
+            else {
+//                qDebug() << "SOF1 error";
+                pos = 0;
+            }
+        break;
+    case 1: // SOF 2
+        if(data == 0x55)
+            buf[pos++] = data;
+        else {
+//            qDebug() << "SOF2 error";
+            pos = 0;
+        }
+        break;
+    case 2: // version
+        if(data == 0)
+            buf[pos++] = data;
+        else {
+//            qDebug() << "Version error";
+            pos = 0;
+        }
+        break;
+    case 3: // packet type
+        if(data == 0)
+            buf[pos++] = data;
+        else {
+//            qDebug() << "Packet type error";
+            pos = 0;
+        }
+        break;
+    default:
+        buf[pos++] = data;
+
+        // Note: Packet type set in packet[3], but we only handle one type.
+        if(pos == sizeof(message_packet_t)) {
+
+            message_packet_t *packet = (message_packet_t*)buf;
+
+            const uint16_t crc_received = packet->crc;
+            packet->crc = 0;
+            const uint16_t crc_calculated = crc16_modbus((uint8_t*)buf, sizeof(message_packet_t));
+
+            if(crc_received != crc_calculated) {
+//                qDebug() << "Bad CRC, got:" << crc_received << " expected:" << crc_calculated;
+                pos = 0;
+            }
+            else {
+                temperature = packet->temperature / 100.0; // temperature is in 1/100s of a C
+                pressure = packet->pressure / 100.0; // pressure is pascals
+                vfb = packet->vfb;
+
+                pos = 0;
+            }
+        }
+        else if(pos > sizeof(message_packet_t)) {
+//            qDebug() << "oversize error";
+            pos = 0;
+        }
+
+        break;
+    }
+}
 
 /* USER CODE END 0 */
 
@@ -100,6 +197,8 @@ int main(void)
   MX_USART1_UART_Init();
   /* USER CODE BEGIN 2 */
 
+  LL_USART_EnableIT_RXNE (USART1);
+
   /* USER CODE END 2 */
 
   /* Infinite loop */
@@ -112,8 +211,13 @@ int main(void)
   ssd1306_WriteString("Hello", Font_11x18, White);
   ssd1306_UpdateScreen();
 
+//  HAL_UART_RegisterCallback(&huart1, HAL_UART_RX_COMPLETE_CB_ID, HAL_UART_RxCpltCallback);
+//  HAL_UART_Receive_IT(&huart1, rx_buf, sizeof(rx_buf));
+
   while (1)
   {
+//    HAL_UART_Transmit(&huart1, msg, sizeof(msg), 100);
+
     /* USER CODE END WHILE */
 
     /* USER CODE BEGIN 3 */
@@ -165,17 +269,12 @@ int main(void)
         break;
     }
 
-    char Rx_data[100];
-    const int received = HAL_UART_Receive (&huart1, &Rx_data, sizeof(Rx_data), 0);
+//    char Rx_data[100];
+//    const int received = HAL_UART_Receive (&huart1, &Rx_data, sizeof(Rx_data), 99999);
+
 
     // Update display
     ssd1306_Fill(Black);
-
-    const float temperature = 25;
-    const float pressure = 1000;
-    static float phase = 0;
-    const float vfb = sin(phase);
-    phase += .01;
 
     char buf[20];
 
@@ -190,10 +289,6 @@ int main(void)
     snprintf(buf, sizeof(buf), "P:%1.3fmbar", pressure);
     ssd1306_SetCursor(2, 40);
     ssd1306_WriteString(buf, Font_11x18, White);
-
-//    snprintf(buf, sizeof(buf), "Rx:%i", received);
-//    ssd1306_SetCursor(2, 22);
-//    ssd1306_WriteString(buf, Font_11x18, White);
 
     ssd1306_UpdateScreen();
   }

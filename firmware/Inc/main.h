@@ -29,6 +29,17 @@ extern "C" {
 
 /* Includes ------------------------------------------------------------------*/
 #include "stm32f0xx_hal.h"
+#include "stm32f0xx_ll_usart.h"
+#include "stm32f0xx_ll_rcc.h"
+#include "stm32f0xx_ll_bus.h"
+#include "stm32f0xx_ll_cortex.h"
+#include "stm32f0xx_ll_system.h"
+#include "stm32f0xx_ll_utils.h"
+#include "stm32f0xx_ll_pwr.h"
+#include "stm32f0xx_ll_gpio.h"
+#include "stm32f0xx_ll_dma.h"
+
+#include "stm32f0xx_ll_exti.h"
 
 /* Private includes ----------------------------------------------------------*/
 /* USER CODE BEGIN Includes */
@@ -73,8 +84,6 @@ void Error_Handler(void);
 #define PIEZO_GPIO_Port GPIOA
 #define LED_R_Pin GPIO_PIN_0
 #define LED_R_GPIO_Port GPIOB
-#define LED_RB1_Pin GPIO_PIN_1
-#define LED_RB1_GPIO_Port GPIOB
 #define LED_G_Pin GPIO_PIN_4
 #define LED_G_GPIO_Port GPIOB
 #define LED_B_Pin GPIO_PIN_5

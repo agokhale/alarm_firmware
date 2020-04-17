@@ -65,7 +65,6 @@ extern volatile char KEY_VALID;
 
 /* External variables --------------------------------------------------------*/
 extern SPI_HandleTypeDef hspi1;
-extern UART_HandleTypeDef huart1;
 /* USER CODE BEGIN EV */
 
 /* USER CODE END EV */
@@ -180,15 +179,25 @@ void SPI1_IRQHandler(void)
   /* USER CODE END SPI1_IRQn 1 */
 }
 
+extern void handle_byte(char b);
+
 /**
   * @brief This function handles USART1 global interrupt.
   */
 void USART1_IRQHandler(void)
 {
   /* USER CODE BEGIN USART1_IRQn 0 */
-
+  if(LL_USART_IsActiveFlag_RXNE(USART1) && LL_USART_IsEnabledIT_RXNE(USART1))
+  {
+    const char b=LL_USART_ReceiveData8(USART1);
+    handle_byte(b);
+  }
+  LL_USART_ClearFlag_RTO(USART1);
+  LL_USART_ClearFlag_ORE(USART1);
+  LL_USART_ClearFlag_PE(USART1);
+  LL_USART_ClearFlag_FE(USART1);
+  LL_USART_ClearFlag_NE(USART1);
   /* USER CODE END USART1_IRQn 0 */
-  HAL_UART_IRQHandler(&huart1);
   /* USER CODE BEGIN USART1_IRQn 1 */
 
   /* USER CODE END USART1_IRQn 1 */
