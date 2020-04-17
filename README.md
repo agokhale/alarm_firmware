@@ -1,4 +1,4 @@
-# Alarm board firmware
+# Alarm board firmware ![](https://github.com/cibomahto/alarm-module/workflows/.github/workflows/main.yml/badge.svg)
 
 Firmware for the [Ventilator alarm module](https://github.com/ventilator-project/alarm_module)
 
