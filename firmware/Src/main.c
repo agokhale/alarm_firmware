@@ -79,17 +79,19 @@ typedef struct {
     uint8_t version; // 0
     uint8_t type; // Packet type: 0
     uint16_t vfb; // ADC value
-    uint32_t pressure;
-    uint32_t temperature;
+    uint32_t airflow; // Airflow, 1/100s of l/m
+    uint32_t pressure; // Pressure, pascals (1/100s of mbar)
+    uint32_t temperature; // Temperature, 1/100s of C
     uint16_t crc; // TODO
 } PACKED message_packet_t;
 #ifdef _MSC_VER
     #pragma pack(pop)
 #endif
 
+float vfb = 0;
 float temperature = 0;
 float pressure = 0;
-float vfb = 0;
+float airflow = 0;
 
 void handle_byte(char data) {
     static char buf[30];  // must be >= sizeof(message_packet_t)
@@ -145,9 +147,10 @@ void handle_byte(char data) {
                 pos = 0;
             }
             else {
+		vfb = packet->vfb / 1000.0; // Voltage is in mv
                 temperature = packet->temperature / 100.0; // temperature is in 1/100s of a C
-                pressure = packet->pressure / 100.0; // pressure is pascals
-                vfb = packet->vfb;
+                pressure = packet->pressure / 100.0; // pressure is pascals (1/100s of mbar)
+                airflow = packet->airflow / 100.0; // Airflow is in 1/100s of l/m
 
                 pos = 0;
             }
@@ -278,17 +281,21 @@ int main(void)
 
     char buf[20];
 
-    snprintf(buf, sizeof(buf), "Vfb:%1.3f", vfb);
+    snprintf(buf, sizeof(buf), "Vfb:%1.3fV", vfb);
     ssd1306_SetCursor(2, 0);
-    ssd1306_WriteString(buf, Font_11x18, White);
+    ssd1306_WriteString(buf, Font_7x10, White);
 
-    snprintf(buf, sizeof(buf), "T:%1.3fC", temperature);
-    ssd1306_SetCursor(2, 20);
-    ssd1306_WriteString(buf, Font_11x18, White);
+    snprintf(buf, sizeof(buf), "F:%1.1fl/m", airflow);
+    ssd1306_SetCursor(2, 12);
+    ssd1306_WriteString(buf, Font_7x10, White);
+
+    snprintf(buf, sizeof(buf), "T:%1.1fC", temperature);
+    ssd1306_SetCursor(2, 24);
+    ssd1306_WriteString(buf, Font_7x10, White);
 
     snprintf(buf, sizeof(buf), "P:%1.3fmbar", pressure);
-    ssd1306_SetCursor(2, 40);
-    ssd1306_WriteString(buf, Font_11x18, White);
+    ssd1306_SetCursor(2, 36);
+    ssd1306_WriteString(buf, Font_7x10, White);
 
     ssd1306_UpdateScreen();
   }
