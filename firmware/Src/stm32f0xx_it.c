@@ -179,8 +179,6 @@ void SPI1_IRQHandler(void)
   /* USER CODE END SPI1_IRQn 1 */
 }
 
-extern void handle_byte(char b);
-
 /**
   * @brief This function handles USART1 global interrupt.
   */
