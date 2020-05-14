@@ -210,7 +210,7 @@ erase:
 
 # Flash with Black Magic probe
 flash-bm: all
-	arm-none-eabi-gdb -nx --batch \
+	gdb-multiarch -nx --batch \
   -ex 'target extended-remote /dev/ttyACM0' \
   -ex 'monitor swdp_scan' \
   -ex 'attach 1' \
