@@ -3,3 +3,4 @@ build
 ideas
 *.lo
 *.swp
+cscope.out
