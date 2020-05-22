@@ -31,6 +31,9 @@
 #include <math.h>
 #include <stdio.h>
 
+#include "EMA_crush.h"
+#include "statemachine.h"
+#include "keyscan.h"
 #include "button.h"
 #include "ssd1306.h"
 #include "crc16_modbus.h"
@@ -85,6 +88,23 @@ typedef struct {
     uint32_t temperature; // Temperature, 1/100s of C
     uint16_t crc; // TODO
 } PACKED message_packet_t;
+long unsigned int gpktcount=0; 
+long unsigned int gpktlasttimeticks=0; 
+long unsigned int gpktlatency=0; 
+#define kbuttoncount 2
+#define kbutton_sel 0
+#define kbutton_cal 1
+keyscan_t buttonstates[ kbuttoncount];
+
+void button_keyscan_init() {
+	for (int i=0; i< kbuttoncount; i++) { keyscan_init(&buttonstates[i]); }
+}
+void button_keyscan_scan() {
+	uint32 ticks = HAL_GetTick();
+	keyscan(ticks,&buttonstates[kbutton_sel], ((GPIOA->IDR & 0x01) == 0) );
+	keyscan(ticks,&buttonstates[kbutton_cal], ((GPIOA->IDR & 0x02) == 0) );
+}
+
 #ifdef _MSC_VER
     #pragma pack(pop)
 #endif
@@ -152,6 +172,11 @@ void handle_byte(char data) {
                 temperature = packet->temperature / 100.0; // temperature is in 1/100s of a C
                 pressure = packet->pressure / 100.0; // pressure is pascals (1/100s of mbar)
                 airflow = packet->airflow / 100.0; // Airflow is in 1/100s of l/m
+                gpktcount ++;
+                //EMA_crush((HAL_GetTick() - gpktlasttimeticks ) , gpktlatency, 5);
+                gpktlatency = HAL_GetTick() - gpktlasttimeticks;
+                gpktlasttimeticks = HAL_GetTick();
+
 
                 pos = 0;
             }
@@ -167,6 +192,30 @@ void handle_byte(char data) {
 
 /* USER CODE END 0 */
 
+
+RTC_TimeTypeDef gtime; 
+void clockinit () {
+  gtime.Hours = 6;
+  gtime.Minutes = 66;
+  gtime.Seconds = 6;
+  gtime.TimeFormat = RTC_HOURFORMAT12_PM;
+  gtime.DayLightSaving = RTC_DAYLIGHTSAVING_NONE;
+  gtime.StoreOperation = RTC_STOREOPERATION_RESET;
+  if (HAL_RTC_SetTime(&hrtc, &gtime, RTC_FORMAT_BIN) != HAL_OK)
+  {
+    Error_Handler();
+  }
+	
+}
+void clockstuffage () {
+
+    char buf[23];
+    button_keyscan_scan();
+    uint32 ticks=HAL_GetTick();
+    snprintf(buf, sizeof(buf), "sel:%i, cal:%i hz:%lu", keyscan_duration(ticks,&buttonstates[kbutton_sel]),keyscan_duration(ticks,&buttonstates[kbutton_cal]),  gpktlatency);
+    ssd1306_SetCursor(2, 48);
+    ssd1306_WriteString(buf, Font_6x8, White);
+}
 /**
   * @brief  The application entry point.
   * @retval int
@@ -215,6 +264,8 @@ int main(void)
 //  HAL_Delay(1000);
   ssd1306_WriteString("Hello", Font_11x18, White);
   ssd1306_UpdateScreen();
+  clockinit();
+  button_keyscan_init (); 
 
 //  HAL_UART_RegisterCallback(&huart1, HAL_UART_RX_COMPLETE_CB_ID, HAL_UART_RxCpltCallback);
 //  HAL_UART_Receive_IT(&huart1, rx_buf, sizeof(rx_buf));
@@ -298,6 +349,12 @@ int main(void)
     snprintf(buf, sizeof(buf), "P:%1.3fmbar", pressure);
     ssd1306_SetCursor(2, 36);
     ssd1306_WriteString(buf, Font_7x10, White);
+
+    
+    snprintf(buf, sizeof(buf), "T:%1.3fmbar", pressure);
+    ssd1306_SetCursor(2, 36);
+    ssd1306_WriteString(buf, Font_7x10, White);
+    clockstuffage (); 
 
     ssd1306_UpdateScreen();
   }
